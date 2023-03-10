@@ -5,12 +5,14 @@ using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Text;
+using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using CmlLib.Core;
 using CmlLib.Core.Auth;
 using CmlLib.Core.Auth.Microsoft;
-using CmlLib.Core.Auth.Microsoft.UI.WinForm;
+using CmlLib.Core.Auth.Microsoft.UI.Wpf;
+using Microsoft.Web.WebView2;
 using CmlLib.Core.VersionLoader;
 
 namespace Elixa_Launcher_v0._2
@@ -30,11 +32,14 @@ namespace Elixa_Launcher_v0._2
         string mcVer = "1.19.2-forge-43.2.0";
 
 
+        bool debugMode = true;
+        string launcherVer = "0.0.1";
+
         private async Task signOut()
         {
 
             //creates log out form
-            MicrosoftLoginForm loginForm = new MicrosoftLoginForm();
+            MicrosoftLoginWindow loginForm = new MicrosoftLoginWindow();
             loginForm.ShowLogoutDialog();
 
 
@@ -101,6 +106,9 @@ namespace Elixa_Launcher_v0._2
             //check if running in microsoft mode
             if (runMicrosoft)
             {
+                MicrosoftLogout.Visible = true;
+                MicrosoftLogout.Enabled = true;
+
                 MicrosoftLoginForm loginForm = new MicrosoftLoginForm();
                 MSession microSesh = await loginForm.ShowLoginDialog();
 
@@ -117,6 +125,7 @@ namespace Elixa_Launcher_v0._2
 
                 }
 
+
                 var process = await launcher.CreateProcessAsync(mcVer, new MLaunchOption
                 {
                     MaximumRamMb = 2048,
@@ -131,8 +140,41 @@ namespace Elixa_Launcher_v0._2
 
         public Form1()
         {
+            bool newVer = false;
+            if (debugMode == true)
+            {
+                //check if version file exists and write to it
+                string path = Environment.GetEnvironmentVariable("appdata") + "\\.Elixa" + "\\ver.txt";
+                if (!File.Exists(path))
+                {
+                    using (StreamWriter sw = File.CreateText(path))
+                    {
+                        sw.WriteLine(launcherVer);
+                        sw.Close();
+                    }
+                }
+                else //if file exists and is not the same, read line and update with the current version
+                {
+                    using (StreamReader sr = File.OpenText(path))
+                    {
+                        string s = sr.ReadLine();
+                        if (launcherVer != s)
+                        {
+                            newVer = true;
+                            sr.Close();
+                        }
+                    }
+                    if (newVer)
+                    {
+                        using (StreamWriter sw = File.CreateText(path))
+                        {
+                            sw.WriteLine(launcherVer);
+                            sw.Close();
+                        }
+                    }
+                }
+            }
             InitializeComponent();
-
         }
 
         private void button1_Click(object sender, EventArgs a)
