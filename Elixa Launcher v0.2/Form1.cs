@@ -11,7 +11,7 @@ using System.Windows.Forms;
 using CmlLib.Core;
 using CmlLib.Core.Auth;
 using CmlLib.Core.Auth.Microsoft;
-using CmlLib.Core.Auth.Microsoft.UI.Wpf;
+using CmlLib.Core.Auth.Microsoft.UI.WinForm;
 using Microsoft.Web.WebView2;
 using CmlLib.Core.VersionLoader;
 
@@ -39,7 +39,7 @@ namespace Elixa_Launcher_v0._2
         {
 
             //creates log out form
-            MicrosoftLoginWindow loginForm = new MicrosoftLoginWindow();
+            MicrosoftLoginForm loginForm = new MicrosoftLoginForm();
             loginForm.ShowLogoutDialog();
 
 
