@@ -28,57 +28,135 @@ namespace ElixaA2
         int ram;
         string mcVer = "1.19.2-forge-43.2.0";
         string verPath = Environment.GetEnvironmentVariable("appdata") + "\\.Elixa";
-        IObserver<string> observer;
+        string sRepo = "https://github.com/zylonity/Elixa-Modpack";
 
+        bool validateFiles = false;
+
+
+        //Currently only checks for the initial download, if files are missing then download everything from the repo
         void CheckUpdates()
         {
             
             if (Directory.Exists(verPath))
             {
-                try
+                if (validateFiles)
                 {
-                    string fileVer = System.IO.File.ReadAllText(verPath + "\\ElixaVer.txt");
-                    verNum.Text = fileVer;
+                    using (var repo = new Repository(verPath))
+                    {
+                        // Fetch the remote branch and its tree
+                        var remoteBranch = repo.Branches["main"];
+                        var remoteCommit = repo.Lookup<Commit>(remoteBranch.Tip.Sha);
+                        var remoteTree = remoteCommit.Tree;
+
+                        // Get the directories and files in the local directory and its subdirectories
+                        var localDirectories = Directory.GetDirectories(verPath, "*", SearchOption.AllDirectories)
+                            .Select(path => GetRelativePath(verPath, path))
+                            .ToList();
+                        var localFiles = Directory.GetFiles(verPath, "*", SearchOption.AllDirectories)
+                            .Select(path => GetRelativePath(verPath, path))
+                            .ToList();
+
+                        // Traverse the remote tree recursively, checking for missing directories and files
+                        var missingDirectories = new List<string>();
+                        var missingFiles = new List<string>();
+                        TraverseTree(remoteTree, verPath, localDirectories, localFiles, ref missingDirectories, ref missingFiles);
+
+                        // Print out the missing directories and files
+                        foreach (var directory in missingDirectories)
+                        {
+                            Console.WriteLine($"Missing directory: {directory}");
+                        }
+                        foreach (var file in missingFiles)
+                        {
+                            Console.WriteLine($"Missing file: {file}");
+                        }
+                    }
                 }
-                catch
+
+                using (var repo = new Repository(verPath))
                 {
-                    verNum.Text = "VerFile not Found";
-                    
+                    var branch = repo.Head;
+
+                    var remote = repo.Network.Remotes["origin"];
+                    var localTip = branch.Tip;
+                    var remoteTip = remote.FetchRefSpecs;
+
+
+
+                    if (remoteTip.ToList().Count() == 0)
+                    {
+                        Console.WriteLine("You are on the latest commit.");
+                    }
+                    else
+                    {
+                        var rremote = repo.Network.Remotes["origin"];
+
+                        var refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
+                        Console.WriteLine("You are not on the latest commit.");
+
+
+                    }
                 }
 
             }
             else
             {
-                var updated = Task.Run(async () => await InitialClone());
+
+                InitialClone();
+                
             }
         }
 
-        void nameProgress(string test)
-        {
-            downloadText.Text = test;
-        }
 
-        async Task<bool> InitialClone()
+        async void UpdateMods()
         {
+            Downloading downloadWindow = new Downloading();
+            downloadWindow.Activate();
+            downloadWindow.Show();
+            downloadWindow.Update();
+            downloadWindow.TopMost = true;
+            float percentDone;
+
             var cOptions = new CloneOptions
             {
-                Checkout = true,
-                CredentialsProvider = null,
+                //Parameters to check for progress
                 OnTransferProgress = progress =>
                 {
-                    var p = (100 * progress.ReceivedObjects) / progress.TotalObjects;
-                    var receivingMessage = String.Format("Receiving objects:  {0}% ({1}/{2})", p, progress.ReceivedObjects, progress.TotalObjects);
-                    observer.OnNext(receivingMessage);
+                    percentDone = ((float)progress.IndexedObjects / (float)progress.TotalObjects * 100.0f);
+                    downloadWindow.progressBar1.Value = (int)percentDone;
                     return true;
                 },
-                IsBare = false,
             };
-            Repository.Clone("https://github.com/zylonity/Elixa-Modpack", verPath, cOptions);
-            string progress = observer;
-            Debug.Log(observer)
-            return true;
+            Repository.Clone(sRepo, verPath, cOptions);
+            downloadWindow.Close();
         }
 
+        //Clones everything
+        async void InitialClone()
+        {
+            Downloading downloadWindow = new Downloading();
+            downloadWindow.Activate();
+            downloadWindow.Show();
+            downloadWindow.Update();
+            downloadWindow.TopMost = true;
+            float percentDone;
+
+            var cOptions = new CloneOptions
+            {
+                //Parameters to check for progress
+                OnTransferProgress = progress =>
+                {
+                    percentDone = ((float)progress.IndexedObjects / (float)progress.TotalObjects * 100.0f);
+                    downloadWindow.progressBar1.Value = (int)percentDone;
+                    return true;
+                },
+            };
+            Repository.Clone(sRepo, verPath, cOptions);
+            downloadWindow.Close();
+        }
+
+
+        //Checks if offline or microsoft
         void CheckGM() //Checks and sets the correct panel according to gamemode
         {
 
@@ -101,6 +179,7 @@ namespace ElixaA2
 
         }
 
+        //Checks offline username
         void OffPlayButtonActive()
         {
             bool usernameValid = false;
@@ -119,6 +198,7 @@ namespace ElixaA2
         }
 
 
+        //Saves offline username
         void CheckOffUsername()
         {
             offlineUsername = (string)Properties.Settings.Default["OfflineUsername"];
@@ -129,35 +209,35 @@ namespace ElixaA2
         }
 
 
+        //Resets the ram per play
         void resetRam()
         {
             ram = (int)Properties.Settings.Default["Ram"];
-            ramBox.Text = ram.ToString();
 
             if (ram <= 0)
             {
-                ramError.Visible = true;
                 OfflinePlay.Enabled = false;
             }
             else
             {
-                ramError.Visible = false;
                 OfflinePlay.Enabled = true;
                 OffPlayButtonActive();
             }
 
         }
 
+        //Initialises everything
         public Form1()
         {
-            InitializeComponent();
             CheckUpdates();
+            InitializeComponent();
             CheckGM();
             CheckOffUsername();
             OffPlayButtonActive();
             resetRam();
         }
 
+        //Deals with the box for microsoft/offline
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
             if(SelectMC.SelectedIndex == 0)
@@ -178,7 +258,7 @@ namespace ElixaA2
                 Properties.Settings.Default.Save();
                 CheckGM();
             }
-        } //Deals with offline/online box
+        } 
 
 
 
@@ -193,6 +273,7 @@ namespace ElixaA2
             OffPlayButtonActive();
         }
 
+        //Pressing play in offline mode
         private async void OfflinePlay_Click(object sender, EventArgs a)
         {
             OfflinePlay.Enabled = false;
@@ -217,6 +298,8 @@ namespace ElixaA2
             this.WindowState = FormWindowState.Normal;
         }
 
+
+        //Save offline username checkbox
         private void checkBox1_CheckedChanged(object sender, EventArgs e)
         {
             Properties.Settings.Default["SaveOfflineUsername"] = checkBox1.Checked;
@@ -229,33 +312,51 @@ namespace ElixaA2
             Properties.Settings.Default.Save();
         }
 
-        private void textBox1_TextChanged(object sender, EventArgs e)
+        //Replaces relativePath thing that .net framwork doesnt have
+        private static string GetRelativePath(string rootPath, string fullPath)
         {
-            try
-            {
-                ram = Int32.Parse(ramBox.Text);
-                if (ram <= 0)
-                {
-                    ramError.Visible = true;
-                    OfflinePlay.Enabled = false;
-                }
-                else
-                {
-                    ramError.Visible = false;
-                    OfflinePlay.Enabled = true;
-                    Properties.Settings.Default["Ram"] = ram;
-                    Properties.Settings.Default.Save();
-                }
-            }
-            catch
-            {
-                ramError.Visible = true;
-                OfflinePlay.Enabled = false;
-            }
-
-
-            
+            var rootUri = new Uri(rootPath.EndsWith("\\") ? rootPath : rootPath + "\\");
+            var fullUri = new Uri(fullPath);
+            var relativeUri = rootUri.MakeRelativeUri(fullUri);
+            return Uri.UnescapeDataString(relativeUri.ToString());
         }
 
+        //Looks through directories and compares the files.
+        private static void TraverseTree(Tree tree, string currentPath, List<string> localDirectories, List<string> localFiles, ref List<string> missingDirectories, ref List<string> missingFiles)
+        {
+            foreach (var entry in tree)
+            {
+                if (entry.TargetType == TreeEntryTargetType.Blob)
+                {
+                    // Check for missing files
+                    var fullPath = Path.Combine(currentPath, entry.Path);
+                    if (!localFiles.Contains(entry.Path))
+                    {
+                        missingFiles.Add(entry.Path);
+                    }
+                }
+                else if (entry.TargetType == TreeEntryTargetType.Tree)
+                {
+                    // Check for missing directories
+                    var fullPath = Path.Combine(currentPath, entry.Path);
+                    if (!localDirectories.Contains(entry.Path))
+                    {
+                        missingDirectories.Add(entry.Path);
+                    }
+
+                    // Recursively traverse the subdirectory
+                    var subTree = (Tree)entry.Target;
+                    TraverseTree(subTree, fullPath, localDirectories, localFiles, ref missingDirectories, ref missingFiles);
+                }
+            }
+        }
+
+        private async void settingsButton_Click(object sender, EventArgs e)
+        {
+            Settings settings = new Settings();
+            settings.Activate();
+            settings.Show();
+            settings.Update();
+        }
     }
 }
