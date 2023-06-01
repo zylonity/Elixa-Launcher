@@ -378,29 +378,6 @@ namespace ElixaA2
 
         }
 
-        //Checks if offline or microsoft
-        void CheckGM() //Checks and sets the correct panel according to gamemode
-        {
-
-
-            if ((int)Properties.Settings.Default["GameMode"] == 0)
-            {
-                OfflinePanel.Visible = false;
-            }
-
-            if ((int)Properties.Settings.Default["GameMode"] == 1)
-            {
-                SelectMC.SelectedIndex = 0;
-                OfflinePanel.Visible = true;
-            }
-
-            if ((int)Properties.Settings.Default["GameMode"] == 2)
-            {
-                SelectMC.SelectedIndex = 1;
-                OfflinePanel.Visible = false;
-            }
-
-        }
 
         //Checks offline username
         void OffPlayButtonActive()
@@ -436,7 +413,6 @@ namespace ElixaA2
             offlineUsername = (string)Properties.Settings.Default["OfflineUsername"];
             OfflineUsernameBox.Text = offlineUsername;
 
-            checkBox1.Checked = (bool)Properties.Settings.Default["SaveOfflineUsername"];
 
         }
 
@@ -464,46 +440,19 @@ namespace ElixaA2
             CheckUpdates();
             InitializeComponent();
 
-
-            CheckGM();
             CheckOffUsername();
             OffPlayButtonActive();
             resetRam();
         }
 
-        //Deals with the box for microsoft/offline
-        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            if(SelectMC.SelectedIndex == 0)
-            {
-                Properties.Settings.Default["GameMode"] = 1;
-                Properties.Settings.Default.Save();
-                CheckGM();
-            }
-            else if(SelectMC.SelectedIndex == 1)
-            {
-                Properties.Settings.Default["GameMode"] = 2;
-                Properties.Settings.Default.Save();
-                CheckGM();
-            }
-            else
-            {
-                Properties.Settings.Default["GameMode"] = 0;
-                Properties.Settings.Default.Save();
-                CheckGM();
-            }
-        } 
 
 
 
         private void OfflineUsernameBox_TextChanged(object sender, EventArgs e)
         {
             offlineUsername = OfflineUsernameBox.Text;
-            if ((bool)Properties.Settings.Default["SaveOfflineUsername"] == true)
-            {
-                Properties.Settings.Default["OfflineUsername"] = offlineUsername;
-                Properties.Settings.Default.Save();
-            }
+            Properties.Settings.Default["OfflineUsername"] = offlineUsername;
+            Properties.Settings.Default.Save();
             OffPlayButtonActive();
         }
 
@@ -539,12 +488,8 @@ namespace ElixaA2
         //Save offline username checkbox
         private void checkBox1_CheckedChanged(object sender, EventArgs e)
         {
-            Properties.Settings.Default["SaveOfflineUsername"] = checkBox1.Checked;
 
-            if ((bool)Properties.Settings.Default["SaveOfflineUsername"] == true)
-                Properties.Settings.Default["OfflineUsername"] = offlineUsername;
-            else
-                Properties.Settings.Default["OfflineUsername"] = "";
+            Properties.Settings.Default["OfflineUsername"] = offlineUsername;
 
             Properties.Settings.Default.Save();
         }
