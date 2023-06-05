@@ -19,6 +19,7 @@ using LibGit2Sharp;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using static System.Net.WebRequestMethods;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace ElixaA2
 {
@@ -31,7 +32,6 @@ namespace ElixaA2
         string sRepo = "https://github.com/zylonity/Elixa-Modpack";
 
         bool validateFiles = false;
-
 
         //Currently only checks for the initial download, if files are missing then download everything from the repo
         void CheckUpdates()
@@ -156,29 +156,6 @@ namespace ElixaA2
         }
 
 
-        //Checks if offline or microsoft
-        void CheckGM() //Checks and sets the correct panel according to gamemode
-        {
-
-            if((int)Properties.Settings.Default["GameMode"] == 0)
-            {
-                OfflinePanel.Visible = false;
-            }
-
-            if ((int)Properties.Settings.Default["GameMode"] == 1)
-            {
-                SelectMC.SelectedIndex = 0;
-                OfflinePanel.Visible = true;
-            }
-
-            if ((int)Properties.Settings.Default["GameMode"] == 2)
-            {
-                SelectMC.SelectedIndex = 1;
-                OfflinePanel.Visible = false;
-            }
-
-        }
-
         //Checks offline username
         void OffPlayButtonActive()
         {
@@ -204,72 +181,33 @@ namespace ElixaA2
             offlineUsername = (string)Properties.Settings.Default["OfflineUsername"];
             OfflineUsernameBox.Text = offlineUsername;
 
-            checkBox1.Checked = (bool)Properties.Settings.Default["SaveOfflineUsername"];
-
         }
 
 
-        //Resets the ram per play
-        void resetRam()
+        //sets ram
+        public void setRam()
         {
             ram = (int)Properties.Settings.Default["Ram"];
-
-            if (ram <= 0)
-            {
-                OfflinePlay.Enabled = false;
-            }
-            else
-            {
-                OfflinePlay.Enabled = true;
-                OffPlayButtonActive();
-            }
 
         }
 
         //Initialises everything
         public Form1()
         {
-            CheckUpdates();
+            //CheckUpdates();
             InitializeComponent();
-            CheckGM();
             CheckOffUsername();
             OffPlayButtonActive();
-            resetRam();
+            setRam();
         }
-
-        //Deals with the box for microsoft/offline
-        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            if(SelectMC.SelectedIndex == 0)
-            {
-                Properties.Settings.Default["GameMode"] = 1;
-                Properties.Settings.Default.Save();
-                CheckGM();
-            }
-            else if(SelectMC.SelectedIndex == 1)
-            {
-                Properties.Settings.Default["GameMode"] = 2;
-                Properties.Settings.Default.Save();
-                CheckGM();
-            }
-            else
-            {
-                Properties.Settings.Default["GameMode"] = 0;
-                Properties.Settings.Default.Save();
-                CheckGM();
-            }
-        } 
 
 
 
         private void OfflineUsernameBox_TextChanged(object sender, EventArgs e)
         {
             offlineUsername = OfflineUsernameBox.Text;
-            if ((bool)Properties.Settings.Default["SaveOfflineUsername"] == true)
-            {
-                Properties.Settings.Default["OfflineUsername"] = offlineUsername;
-                Properties.Settings.Default.Save();
-            }
+            Properties.Settings.Default["OfflineUsername"] = offlineUsername;
+            Properties.Settings.Default.Save();
             OffPlayButtonActive();
         }
 
@@ -298,19 +236,6 @@ namespace ElixaA2
             this.WindowState = FormWindowState.Normal;
         }
 
-
-        //Save offline username checkbox
-        private void checkBox1_CheckedChanged(object sender, EventArgs e)
-        {
-            Properties.Settings.Default["SaveOfflineUsername"] = checkBox1.Checked;
-
-            if ((bool)Properties.Settings.Default["SaveOfflineUsername"] == true)
-                Properties.Settings.Default["OfflineUsername"] = offlineUsername;
-            else
-                Properties.Settings.Default["OfflineUsername"] = "";
-
-            Properties.Settings.Default.Save();
-        }
 
         //Replaces relativePath thing that .net framwork doesnt have
         private static string GetRelativePath(string rootPath, string fullPath)
@@ -357,6 +282,114 @@ namespace ElixaA2
             settings.Activate();
             settings.Show();
             settings.Update();
+        }
+
+
+
+        private void OfflinePlay_MouseEnter(object sender, EventArgs e)
+        {
+            OfflinePlay.Image = Properties.Resources.jugar_cursor_encima;
+        }
+        private void OfflinePlay_MouseLeave(object sender, EventArgs e)
+        {
+            OfflinePlay.Image = Properties.Resources.jugar;
+        }
+
+        private void OfflinePlay_MouseDown(object sender, MouseEventArgs e)
+        {
+            OfflinePlay.Image = Properties.Resources.jugar2;
+        }
+
+        private void OfflinePlay_MouseUp(object sender, MouseEventArgs e)
+        {
+            OfflinePlay.Image = Properties.Resources.jugar;
+        }
+
+        private void settingsButton_MouseDown(object sender, MouseEventArgs e)
+        {
+            settingsButton.Image = Properties.Resources.config2;
+        }
+
+        private void settingsButton_MouseUp(object sender, MouseEventArgs e)
+        {
+            settingsButton.Image = Properties.Resources.config;
+        }
+
+        private void settingsButton_MouseEnter(object sender, EventArgs e)
+        {
+            settingsButton.Image = Properties.Resources.config_cursor_encima;
+        }
+
+        private void settingsButton_MouseLeave(object sender, EventArgs e)
+        {
+            settingsButton.Image = Properties.Resources.config;
+        }
+
+        private void closeButton_Click(object sender, EventArgs e)
+        {
+            Application.Exit();
+        }
+
+        private void minimizeButton_Click(object sender, EventArgs e)
+        {
+            this.WindowState = FormWindowState.Minimized;
+        }
+
+        private void minimizeButton_MouseDown(object sender, MouseEventArgs e)
+        {
+            minimizeButton.Image = Properties.Resources.minimizar2;
+        }
+
+        private void minimizeButton_MouseUp(object sender, MouseEventArgs e)
+        {
+            minimizeButton.Image = Properties.Resources.minimizar;
+        }
+
+        private void minimizeButton_MouseEnter(object sender, EventArgs e)
+        {
+            minimizeButton.Image = Properties.Resources.minimizar_cursor_encima;
+        }
+
+        private void minimizeButton_MouseLeave(object sender, EventArgs e)
+        {
+            minimizeButton.Image = Properties.Resources.minimizar;
+        }
+
+        private void closeButton_MouseDown(object sender, MouseEventArgs e)
+        {
+            closeButton.Image = Properties.Resources.cerrar2;
+        }
+
+        private void closeButton_MouseUp(object sender, MouseEventArgs e)
+        {
+            closeButton.Image = Properties.Resources.cerrar;
+        }
+
+        private void closeButton_MouseEnter(object sender, EventArgs e)
+        {
+            closeButton.Image = Properties.Resources.cerrar_cursor_encima;
+        }
+
+        private void closeButton_MouseLeave(object sender, EventArgs e)
+        {
+            closeButton.Image = Properties.Resources.cerrar;
+        }
+
+        public const int WM_NCLBUTTONDOWN = 0xA1;
+        public const int HT_CAPTION = 0x2;
+
+        [DllImportAttribute("user32.dll")]
+        public static extern int SendMessage(IntPtr hWnd, int Msg, int wParam, int lParam);
+        [DllImportAttribute("user32.dll")]
+        public static extern bool ReleaseCapture();
+
+        private void Form1_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                ReleaseCapture();
+                SendMessage(Handle, WM_NCLBUTTONDOWN, HT_CAPTION, 0);
+            }
         }
     }
 }

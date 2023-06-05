@@ -12,6 +12,7 @@ namespace ElixaA2
 {
     public partial class Settings : Form
     {
+
         public Settings()
         {
             InitializeComponent();
@@ -23,6 +24,9 @@ namespace ElixaA2
             Properties.Settings.Default["RamIndex"] = RamBox.SelectedIndex;
             Properties.Settings.Default["Ram"] = (RamBox.SelectedIndex + 2) * 1024;
             Properties.Settings.Default.Save();
+
+            var mainForm = Application.OpenForms.OfType<Form1>().Single();
+            mainForm.setRam();
 
         }
     }
