@@ -16,10 +16,10 @@ using CmlLib.Core.Auth;
 using CmlLib.Core.Auth.Microsoft;
 using CmlLib.Core.VersionLoader;
 using LibGit2Sharp;
+using System.Runtime.InteropServices;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using static System.Net.WebRequestMethods;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 
 namespace ElixaA2
 {
@@ -29,12 +29,17 @@ namespace ElixaA2
         int ram;
         string mcVer = "1.19.2-forge-43.2.0";
         string verPath = Environment.GetEnvironmentVariable("appdata") + "\\.Elixa";
+        string modPath = Environment.GetEnvironmentVariable("appdata") + "\\.Elixa\\mods";
         string sRepo = "https://github.com/zylonity/Elixa-Modpack";
 
         bool validateFiles = false;
+        bool updating = false;
+
+        Downloading downloadWindow;
+
 
         //Currently only checks for the initial download, if files are missing then download everything from the repo
-        void CheckUpdates()
+        async Task<bool> CheckUpdates()
         {
             
             if (Directory.Exists(verPath))
@@ -73,73 +78,174 @@ namespace ElixaA2
                     }
                 }
 
+
+                string logMessage = "";
                 using (var repo = new Repository(verPath))
                 {
-                    var branch = repo.Head;
-
                     var remote = repo.Network.Remotes["origin"];
-                    var localTip = branch.Tip;
-                    var remoteTip = remote.FetchRefSpecs;
+                    var refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
+                    Commands.Fetch(repo, remote.Name, refSpecs, null, logMessage);
 
+                    var updates = repo.Diff.Compare<TreeChanges>(repo.Head.Tip.Tree, repo.Branches[repo.Head.FriendlyName].TrackedBranch.Tip.Tree);
 
-
-                    if (remoteTip.ToList().Count() == 0)
+                    if (updates.Count > 0)
                     {
-                        Console.WriteLine("You are on the latest commit.");
+                        updating = true;
+                        Console.WriteLine("Updates");
+
+                        Downloading updateWindow = new Downloading();
+                        updateWindow.Show();
+                        updateWindow.Text = "Updating";
+                        updateWindow.DownloadBigLabel.Text = "Updating";
+                        updateWindow.progressBar1.Hide();
+                        updateWindow.Activate();
+                        updateWindow.Update();
+
+                        if (System.IO.File.Exists(modPath + "\\ModList.txt"))
+                        {
+                            System.IO.File.Copy((modPath + "\\ModList.txt"), (modPath + "\\OldModList.txt"), true);
+                        }
+
+                        MergeResult mergeResult;
+                        try
+                        {
+                            mergeResult = repo.Merge(repo.Branches[repo.Head.FriendlyName].TrackedBranch, repo.Config.BuildSignature(DateTimeOffset.Now));
+                        }
+                        catch (CheckoutConflictException)
+                        {
+                            // If there's a conflict, reset the repo and try the merge again
+                            repo.Reset(ResetMode.Hard);
+                            mergeResult = repo.Merge(repo.Branches[repo.Head.FriendlyName].TrackedBranch, repo.Config.BuildSignature(DateTimeOffset.Now));
+                        }
+
+                        // If there are conflicts, prioritize the incoming file
+                        if (mergeResult.Status == MergeStatus.Conflicts)
+                        {
+                            foreach (var conflict in repo.Index.Conflicts)
+                            {
+                                // Directly checkout the remote's version of the file, effectively replacing the local one
+                                Commands.Checkout(repo, conflict.Theirs.Path, new CheckoutOptions { CheckoutModifiers = CheckoutModifiers.Force });
+                            }
+
+                            Signature merger = repo.Config.BuildSignature(DateTimeOffset.Now);
+                            Commit mergeCommit = repo.Commit("Merge commit", merger, merger);
+                        }
+
+                        if (mergeResult.Status != MergeStatus.UpToDate)
+                        {
+                            updateWindow.Close();
+                            updateWindow.Hide();
+                        }
+
+                        //Deal with mods
+                        string[] filePaths = Directory.GetFiles(modPath);
+
+                        List<string> fileNames = filePaths.Select(path => Path.GetFileName(path)).ToList();
+                        var downloads = new List<string>();
+                        var oldDownloads = new List<string>();
+                        var finalDownloads = new List<string>();
+
+                        //Get a list of mods in the list
+                        foreach (string line in System.IO.File.ReadAllLines(modPath + "\\ModList.txt"))
+                        {
+                            if (Uri.IsWellFormedUriString(line, UriKind.Absolute))
+                            {
+                                downloads.Add(line);
+                            }
+                        }
+
+                        //Get a list of the old mods
+                        foreach (string line in System.IO.File.ReadAllLines(modPath + "\\OldModList.txt"))
+                        {
+                            if (Uri.IsWellFormedUriString(line, UriKind.Absolute))
+                            {
+                                oldDownloads.Add(line);
+                            }
+                        }
+
+                        //Get a list of all the new mods to download
+                        foreach (string download in downloads)
+                        {
+                            Uri mod = new Uri(download);
+                            if (!fileNames.Contains(System.IO.Path.GetFileName(mod.LocalPath)))
+                            {
+                                finalDownloads.Add(download);
+                            }
+                        }
+
+                        //Get a list of all the old mods to delete
+                        foreach (string olddownload in oldDownloads)
+                        {
+
+                            if (!downloads.Contains(olddownload))
+                            {
+                                Uri mod = new Uri(olddownload);
+                                if (fileNames.Contains(System.IO.Path.GetFileName(mod.LocalPath)))
+                                {
+                                    System.IO.File.Delete(modPath + "\\" + System.IO.Path.GetFileName(mod.LocalPath));
+                                }
+                            }
+                        }
+
+                        if (finalDownloads.Count > 0)
+                        {
+                            downloadWindow = new Downloading();
+                            downloadWindow.Activate();
+                            downloadWindow.Show();
+                            downloadWindow.Update();
+                            await Task.Run(async () => await DownloadMods(finalDownloads));
+                        }
+
+                        updating = false;
+
                     }
                     else
                     {
-                        var rremote = repo.Network.Remotes["origin"];
+                        Console.WriteLine("No updates");
+                    }
 
-                        var refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
-                        Console.WriteLine("You are not on the latest commit.");
-
-
+                    foreach (TreeEntryChanges c in updates)
+                    {
+                        Console.WriteLine(c);
                     }
                 }
-
+                Console.WriteLine(logMessage);
+                OffPlayButtonActive();
             }
             else
             {
+                updating = true;
+                downloadWindow = new Downloading();
+                downloadWindow.Show();
+                downloadWindow.Update();
+                await InitialClone();
+                downloadWindow.Close();
+                updating = false;
 
-                InitialClone();
-                
-            }
-        }
+                var downloads = new List<string>();
 
-
-        async void UpdateMods()
-        {
-            Downloading downloadWindow = new Downloading();
-            downloadWindow.Activate();
-            downloadWindow.Show();
-            downloadWindow.Update();
-            downloadWindow.TopMost = true;
-            float percentDone;
-
-            var cOptions = new CloneOptions
-            {
-                //Parameters to check for progress
-                OnTransferProgress = progress =>
+                foreach (string line in System.IO.File.ReadAllLines(modPath + "\\ModList.txt"))
                 {
-                    percentDone = ((float)progress.IndexedObjects / (float)progress.TotalObjects * 100.0f);
-                    downloadWindow.progressBar1.Value = (int)percentDone;
-                    return true;
-                },
-            };
-            Repository.Clone(sRepo, verPath, cOptions);
-            downloadWindow.Close();
+                    if (Uri.IsWellFormedUriString(line, UriKind.Absolute))
+                    {
+                        downloads.Add(line);
+                    }
+                }
+
+                await Task.Run(async () => await DownloadMods(downloads));
+
+                OffPlayButtonActive();
+            }
+            return false;
         }
+
 
         //Clones everything
-        async void InitialClone()
+        async Task InitialClone()
         {
-            Downloading downloadWindow = new Downloading();
-            downloadWindow.Activate();
-            downloadWindow.Show();
-            downloadWindow.Update();
             downloadWindow.TopMost = true;
             float percentDone;
+            float previousPercentDone = 0;
 
             var cOptions = new CloneOptions
             {
@@ -147,12 +253,129 @@ namespace ElixaA2
                 OnTransferProgress = progress =>
                 {
                     percentDone = ((float)progress.IndexedObjects / (float)progress.TotalObjects * 100.0f);
-                    downloadWindow.progressBar1.Value = (int)percentDone;
+                    if ((int)percentDone > previousPercentDone)
+                    {
+                        previousPercentDone = (int)percentDone;
+
+                        // Update progress bar on UI thread
+                        downloadWindow.Invoke((Action)(() =>
+                        {
+                            downloadWindow.progressBar1.Value = (int)percentDone;
+                            downloadWindow.progressBar1.Update();
+                        }));
+                    }
+
                     return true;
                 },
             };
-            Repository.Clone(sRepo, verPath, cOptions);
-            downloadWindow.Close();
+
+            // Run clone in separate task
+            await Task.Run(() => Repository.Clone(sRepo, verPath, cOptions));
+        }
+
+
+        async Task DownloadMods(List<string> downloads)
+        {
+            Console.WriteLine(downloads.Count);
+
+            if (downloads.Count == 1)
+            {
+                Console.WriteLine(downloads[0]);
+                Uri mod = new Uri(downloads[0]);
+                string modName = System.IO.Path.GetFileName(mod.LocalPath); //get file name
+                Console.WriteLine(downloads[0]);
+                using (var client = new WebClient())
+                {
+                    int index = downloads.FindIndex(a => a.Contains(downloads[0]));
+
+                    client.DownloadFileCompleted += (s, e) => Console.WriteLine("Download file completed.");
+
+                    client.DownloadProgressChanged += (s, e) => downloadWindow.Invoke((MethodInvoker)delegate {
+                        downloadWindow.DownloadBigLabel.Text = modName;
+                        downloadWindow.progressBar1.Value = (int)e.ProgressPercentage;
+
+                        downloadWindow.Update();
+                        Application.DoEvents();
+
+                        if (e.ProgressPercentage >= 100)
+                        {
+                            try
+                            {
+                                if (downloads[index + 1] == null) ;
+
+                            }
+                            catch (ArgumentOutOfRangeException ex)
+                            {
+                                downloadWindow.Hide();
+                                downloadWindow.Close();
+                            }
+                        }
+
+                    });
+                    await client.DownloadFileTaskAsync(mod, modPath + "\\" + modName);
+
+                    if (downloads[index + 1] != null)
+                    {
+                        client.DownloadFileCompleted += (s, e) => Console.WriteLine("Download file completed.");
+                    }
+
+
+                }
+            }
+
+            if (downloads.Count > 1)
+            {
+                foreach (string download in downloads)
+                {
+                    Console.WriteLine(download);
+                    Uri mod = new Uri(download);
+                    string modName = System.IO.Path.GetFileName(mod.LocalPath); //get file name
+                    Console.WriteLine(download);
+                    using (var client = new WebClient())
+                    {
+                        int index = downloads.FindIndex(a => a.Contains(download));
+
+                        client.DownloadFileCompleted += (s, e) => Console.WriteLine("Download file completed.");
+
+                        client.DownloadProgressChanged += (s, e) => downloadWindow.Invoke((MethodInvoker)delegate {
+                            downloadWindow.DownloadBigLabel.Text = modName;
+                            downloadWindow.progressBar1.Value = (int)e.ProgressPercentage;
+
+                            downloadWindow.Update();
+                            Application.DoEvents();
+
+                            if (e.ProgressPercentage >= 100)
+                            {
+                                try
+                                {
+                                    if (downloads[index + 1] == null) ;
+
+                                }
+                                catch (ArgumentOutOfRangeException ex)
+                                {
+                                    downloadWindow.Hide();
+                                    downloadWindow.Close();
+                                }
+                            }
+
+                        });
+                        await client.DownloadFileTaskAsync(mod, modPath + "\\" + modName);
+
+                        if (downloads[index + 1] != null)
+                        {
+                            client.DownloadFileCompleted += (s, e) => Console.WriteLine("Download file completed.");
+                        }
+
+
+                    }
+
+                }
+            }
+            
+
+
+
+
         }
 
 
@@ -171,6 +394,15 @@ namespace ElixaA2
                 usernameValid = false;
             }
 
+            if (updating == true)
+            {
+                usernameValid = false;
+            }
+            else
+            {
+                usernameValid = true;
+            }
+
             OfflinePlay.Enabled = usernameValid;
         }
 
@@ -181,25 +413,38 @@ namespace ElixaA2
             offlineUsername = (string)Properties.Settings.Default["OfflineUsername"];
             OfflineUsernameBox.Text = offlineUsername;
 
+
         }
 
 
-        //sets ram
-        public void setRam()
+        //Resets the ram per play
+        void resetRam()
         {
             ram = (int)Properties.Settings.Default["Ram"];
+
+            if (ram <= 0)
+            {
+                OfflinePlay.Enabled = false;
+            }
+            else
+            {
+                OfflinePlay.Enabled = true;
+                OffPlayButtonActive();
+            }
 
         }
 
         //Initialises everything
         public Form1()
         {
-            //CheckUpdates();
+            CheckUpdates();
             InitializeComponent();
+
             CheckOffUsername();
             OffPlayButtonActive();
-            setRam();
+            resetRam();
         }
+
 
 
 
@@ -210,6 +455,8 @@ namespace ElixaA2
             Properties.Settings.Default.Save();
             OffPlayButtonActive();
         }
+
+
 
         //Pressing play in offline mode
         private async void OfflinePlay_Click(object sender, EventArgs a)
@@ -236,6 +483,16 @@ namespace ElixaA2
             this.WindowState = FormWindowState.Normal;
         }
 
+
+
+        //Save offline username checkbox
+        private void checkBox1_CheckedChanged(object sender, EventArgs e)
+        {
+
+            Properties.Settings.Default["OfflineUsername"] = offlineUsername;
+
+            Properties.Settings.Default.Save();
+        }
 
         //Replaces relativePath thing that .net framwork doesnt have
         private static string GetRelativePath(string rootPath, string fullPath)
@@ -282,114 +539,6 @@ namespace ElixaA2
             settings.Activate();
             settings.Show();
             settings.Update();
-        }
-
-
-
-        private void OfflinePlay_MouseEnter(object sender, EventArgs e)
-        {
-            OfflinePlay.Image = Properties.Resources.jugar_cursor_encima;
-        }
-        private void OfflinePlay_MouseLeave(object sender, EventArgs e)
-        {
-            OfflinePlay.Image = Properties.Resources.jugar;
-        }
-
-        private void OfflinePlay_MouseDown(object sender, MouseEventArgs e)
-        {
-            OfflinePlay.Image = Properties.Resources.jugar2;
-        }
-
-        private void OfflinePlay_MouseUp(object sender, MouseEventArgs e)
-        {
-            OfflinePlay.Image = Properties.Resources.jugar;
-        }
-
-        private void settingsButton_MouseDown(object sender, MouseEventArgs e)
-        {
-            settingsButton.Image = Properties.Resources.config2;
-        }
-
-        private void settingsButton_MouseUp(object sender, MouseEventArgs e)
-        {
-            settingsButton.Image = Properties.Resources.config;
-        }
-
-        private void settingsButton_MouseEnter(object sender, EventArgs e)
-        {
-            settingsButton.Image = Properties.Resources.config_cursor_encima;
-        }
-
-        private void settingsButton_MouseLeave(object sender, EventArgs e)
-        {
-            settingsButton.Image = Properties.Resources.config;
-        }
-
-        private void closeButton_Click(object sender, EventArgs e)
-        {
-            Application.Exit();
-        }
-
-        private void minimizeButton_Click(object sender, EventArgs e)
-        {
-            this.WindowState = FormWindowState.Minimized;
-        }
-
-        private void minimizeButton_MouseDown(object sender, MouseEventArgs e)
-        {
-            minimizeButton.Image = Properties.Resources.minimizar2;
-        }
-
-        private void minimizeButton_MouseUp(object sender, MouseEventArgs e)
-        {
-            minimizeButton.Image = Properties.Resources.minimizar;
-        }
-
-        private void minimizeButton_MouseEnter(object sender, EventArgs e)
-        {
-            minimizeButton.Image = Properties.Resources.minimizar_cursor_encima;
-        }
-
-        private void minimizeButton_MouseLeave(object sender, EventArgs e)
-        {
-            minimizeButton.Image = Properties.Resources.minimizar;
-        }
-
-        private void closeButton_MouseDown(object sender, MouseEventArgs e)
-        {
-            closeButton.Image = Properties.Resources.cerrar2;
-        }
-
-        private void closeButton_MouseUp(object sender, MouseEventArgs e)
-        {
-            closeButton.Image = Properties.Resources.cerrar;
-        }
-
-        private void closeButton_MouseEnter(object sender, EventArgs e)
-        {
-            closeButton.Image = Properties.Resources.cerrar_cursor_encima;
-        }
-
-        private void closeButton_MouseLeave(object sender, EventArgs e)
-        {
-            closeButton.Image = Properties.Resources.cerrar;
-        }
-
-        public const int WM_NCLBUTTONDOWN = 0xA1;
-        public const int HT_CAPTION = 0x2;
-
-        [DllImportAttribute("user32.dll")]
-        public static extern int SendMessage(IntPtr hWnd, int Msg, int wParam, int lParam);
-        [DllImportAttribute("user32.dll")]
-        public static extern bool ReleaseCapture();
-
-        private void Form1_MouseDown(object sender, MouseEventArgs e)
-        {
-            if (e.Button == MouseButtons.Left)
-            {
-                ReleaseCapture();
-                SendMessage(Handle, WM_NCLBUTTONDOWN, HT_CAPTION, 0);
-            }
         }
     }
 }

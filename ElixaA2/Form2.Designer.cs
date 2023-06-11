@@ -42,8 +42,7 @@
             this.progressBar1.Size = new System.Drawing.Size(400, 34);
             this.progressBar1.Step = 1;
             this.progressBar1.TabIndex = 0;
-            this.progressBar1.UseWaitCursor = true;
-            this.progressBar1.Click += new System.EventHandler(this.progressBar1_Click);
+
             // 
             // DownloadBigLabel
             // 
@@ -56,6 +55,7 @@
             this.DownloadBigLabel.Size = new System.Drawing.Size(330, 25);
             this.DownloadBigLabel.TabIndex = 1;
             this.DownloadBigLabel.Text = "Downloading initial modpack files";
+
             // 
             // Downloading
             // 
@@ -68,14 +68,13 @@
             this.Name = "Downloading";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Downloading";
-            this.UseWaitCursor = true;
             this.ResumeLayout(false);
             this.PerformLayout();
 
         }
 
         #endregion
-        private System.Windows.Forms.Label DownloadBigLabel;
+        public System.Windows.Forms.Label DownloadBigLabel;
         public System.Windows.Forms.ProgressBar progressBar1;
     }
 }
