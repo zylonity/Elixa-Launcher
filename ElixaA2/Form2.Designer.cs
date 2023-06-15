@@ -42,7 +42,6 @@
             this.progressBar1.Size = new System.Drawing.Size(400, 34);
             this.progressBar1.Step = 1;
             this.progressBar1.TabIndex = 0;
-
             // 
             // DownloadBigLabel
             // 
@@ -50,12 +49,11 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.DownloadBigLabel.AutoSize = true;
             this.DownloadBigLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.DownloadBigLabel.Location = new System.Drawing.Point(81, 50);
+            this.DownloadBigLabel.Location = new System.Drawing.Point(66, 51);
             this.DownloadBigLabel.Name = "DownloadBigLabel";
-            this.DownloadBigLabel.Size = new System.Drawing.Size(330, 25);
+            this.DownloadBigLabel.Size = new System.Drawing.Size(363, 25);
             this.DownloadBigLabel.TabIndex = 1;
-            this.DownloadBigLabel.Text = "Downloading initial modpack files";
-
+            this.DownloadBigLabel.Text = "Descargando los archivos iniciales...";
             // 
             // Downloading
             // 
@@ -67,7 +65,7 @@
             this.Controls.Add(this.progressBar1);
             this.Name = "Downloading";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "Downloading";
+            this.Text = "Descargando...";
             this.ResumeLayout(false);
             this.PerformLayout();
 

@@ -28,23 +28,20 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.ramLabel = new System.Windows.Forms.Label();
             this.RamBox = new System.Windows.Forms.ComboBox();
+            this.OfflineUsernameBox = new System.Windows.Forms.TextBox();
+            this.pictureBox1 = new System.Windows.Forms.PictureBox();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.SuspendLayout();
-            // 
-            // ramLabel
-            // 
-            this.ramLabel.AutoSize = true;
-            this.ramLabel.Location = new System.Drawing.Point(209, 131);
-            this.ramLabel.Name = "ramLabel";
-            this.ramLabel.Size = new System.Drawing.Size(34, 13);
-            this.ramLabel.TabIndex = 1;
-            this.ramLabel.Text = "RAM:";
             // 
             // RamBox
             // 
             this.RamBox.AccessibleRole = System.Windows.Forms.AccessibleRole.None;
+            this.RamBox.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(110)))), ((int)(((byte)(110)))), ((int)(((byte)(110)))));
             this.RamBox.DisplayMember = "1";
+            this.RamBox.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.RamBox.Font = new System.Drawing.Font("Minecraft", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.RamBox.ForeColor = System.Drawing.Color.White;
             this.RamBox.FormattingEnabled = true;
             this.RamBox.Items.AddRange(new object[] {
             "2048 Mb",
@@ -66,33 +63,64 @@
             "18432 Mb",
             "19456 Mb",
             "20480 Mb"});
-            this.RamBox.Location = new System.Drawing.Point(249, 128);
+            this.RamBox.Location = new System.Drawing.Point(267, 212);
             this.RamBox.Name = "RamBox";
-            this.RamBox.Size = new System.Drawing.Size(85, 21);
+            this.RamBox.Size = new System.Drawing.Size(281, 24);
             this.RamBox.TabIndex = 2;
             this.RamBox.Text = "2048 Mb";
             this.RamBox.SelectedIndexChanged += new System.EventHandler(this.RamBox_SelectedIndexChanged);
+            // 
+            // OfflineUsernameBox
+            // 
+            this.OfflineUsernameBox.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(110)))), ((int)(((byte)(110)))), ((int)(((byte)(110)))));
+            this.OfflineUsernameBox.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.OfflineUsernameBox.Font = new System.Drawing.Font("Minecraft", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.OfflineUsernameBox.ForeColor = System.Drawing.Color.White;
+            this.OfflineUsernameBox.Location = new System.Drawing.Point(267, 112);
+            this.OfflineUsernameBox.Name = "OfflineUsernameBox";
+            this.OfflineUsernameBox.Size = new System.Drawing.Size(281, 18);
+            this.OfflineUsernameBox.TabIndex = 4;
+            this.OfflineUsernameBox.Text = "AAA";
+            this.OfflineUsernameBox.TextChanged += new System.EventHandler(this.OfflineUsernameBox_TextChanged);
+            // 
+            // pictureBox1
+            // 
+            this.pictureBox1.BackColor = System.Drawing.Color.Transparent;
+            this.pictureBox1.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.pictureBox1.Image = global::ElixaA2.Properties.Resources.atrás;
+            this.pictureBox1.Location = new System.Drawing.Point(25, 16);
+            this.pictureBox1.Name = "pictureBox1";
+            this.pictureBox1.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.CenterImage;
+            this.pictureBox1.TabIndex = 5;
+            this.pictureBox1.TabStop = false;
+            this.pictureBox1.Click += new System.EventHandler(this.pictureBox1_Click);
             // 
             // Settings
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(571, 306);
+            this.BackgroundImage = global::ElixaA2.Properties.Resources.menu_gui;
+            this.ClientSize = new System.Drawing.Size(816, 489);
+            this.Controls.Add(this.pictureBox1);
+            this.Controls.Add(this.OfflineUsernameBox);
             this.Controls.Add(this.RamBox);
-            this.Controls.Add(this.ramLabel);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "Settings";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Settings";
+            this.MouseDown += new System.Windows.Forms.MouseEventHandler(this.Settings_MouseDown);
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
         }
 
         #endregion
-
-        private System.Windows.Forms.Label ramLabel;
         private System.Windows.Forms.ComboBox RamBox;
+        private System.Windows.Forms.TextBox OfflineUsernameBox;
+        private System.Windows.Forms.PictureBox pictureBox1;
     }
 }

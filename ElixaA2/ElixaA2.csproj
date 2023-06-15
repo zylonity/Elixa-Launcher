@@ -35,6 +35,9 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>icon2.ico</ApplicationIcon>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="CmlLib, Version=3.3.6.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\CmlLib.Core.3.3.6\lib\net462\CmlLib.dll</HintPath>
@@ -78,6 +81,11 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
     <Compile Include="Settings.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -92,14 +100,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-    <Compile Include="Properties\Resources.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Resources.resx</DependentUpon>
-      <DesignTime>True</DesignTime>
-    </Compile>
     <EmbeddedResource Include="Settings.resx">
       <DependentUpon>Settings.cs</DependentUpon>
     </EmbeddedResource>
@@ -118,46 +121,44 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\config_cursor_encima.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\config2.png" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="Resources\minimizar.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\minimizar_cursor_encima.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\minimizar2.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\cerrar.png" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\cerrar_cursor_encima.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\cerrar2.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\config.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\jugar_cursor_encima.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\jugar.png" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="Resources\jugar2.png" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\Logo_elixa.png" />
+    <None Include="Resources\background.png" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\logo_como_tiene_que_ser.png" />
+    <None Include="Resources\atrás.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\jugar1.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\jugar3.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\menu_gui.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\menu1.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\menu2.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\menu3.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\jugar_disabled.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="icon.ico" />
+    <Content Include="icon2.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

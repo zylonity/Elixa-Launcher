@@ -20,16 +20,17 @@ using System.Runtime.InteropServices;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using static System.Net.WebRequestMethods;
 using System.Diagnostics;
+using System.Threading;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
 
 namespace ElixaA2
 {
     public partial class Form1 : Form
     {
-        string offlineUsername;
+        string offlineUsername = (string)Properties.Settings.Default["Username"];
         int ram;
         string mcVer = "1.19.2-forge-43.2.0";
         string verPath = Environment.GetEnvironmentVariable("appdata") + "\\.Elixa";
-        string modPath = Environment.GetEnvironmentVariable("appdata") + "\\.Elixa\\mods";
         string sRepo = "https://github.com/zylonity/Elixa-Modpack";
 
         bool validateFiles = false;
@@ -39,7 +40,7 @@ namespace ElixaA2
 
 
         //Currently only checks for the initial download, if files are missing then download everything from the repo
-        async Task<bool> CheckUpdates()
+        async Task CheckUpdates()
         {
             
             if (Directory.Exists(verPath))
@@ -91,126 +92,71 @@ namespace ElixaA2
                     if (updates.Count > 0)
                     {
                         updating = true;
-                        Console.WriteLine("Updates");
 
                         Downloading updateWindow = new Downloading();
-                        updateWindow.Show();
-                        updateWindow.Text = "Updating";
-                        updateWindow.DownloadBigLabel.Text = "Updating";
+                        updateWindow.Text = "Actualizando";
+                        updateWindow.DownloadBigLabel.Text = "Actualizando...";
                         updateWindow.progressBar1.Hide();
-                        updateWindow.Activate();
+                        updateWindow.Show();
                         updateWindow.Update();
+                        updateWindow.TopMost = true;
 
-                        if (System.IO.File.Exists(modPath + "\\ModList.txt"))
+                        await Task.Run(() =>
                         {
-                            System.IO.File.Copy((modPath + "\\ModList.txt"), (modPath + "\\OldModList.txt"), true);
-                        }
-
-                        MergeResult mergeResult;
-                        try
-                        {
-                            mergeResult = repo.Merge(repo.Branches[repo.Head.FriendlyName].TrackedBranch, repo.Config.BuildSignature(DateTimeOffset.Now));
-                        }
-                        catch (CheckoutConflictException)
-                        {
-                            // If there's a conflict, reset the repo and try the merge again
-                            repo.Reset(ResetMode.Hard);
-                            mergeResult = repo.Merge(repo.Branches[repo.Head.FriendlyName].TrackedBranch, repo.Config.BuildSignature(DateTimeOffset.Now));
-                        }
-
-                        // If there are conflicts, prioritize the incoming file
-                        if (mergeResult.Status == MergeStatus.Conflicts)
-                        {
-                            foreach (var conflict in repo.Index.Conflicts)
+                            MergeResult mergeResult;
+                            try
                             {
-                                // Directly checkout the remote's version of the file, effectively replacing the local one
-                                Commands.Checkout(repo, conflict.Theirs.Path, new CheckoutOptions { CheckoutModifiers = CheckoutModifiers.Force });
-                            }
+                                mergeResult = repo.Merge(repo.Branches[repo.Head.FriendlyName].TrackedBranch, repo.Config.BuildSignature(DateTimeOffset.Now));
 
-                            Signature merger = repo.Config.BuildSignature(DateTimeOffset.Now);
-                            Commit mergeCommit = repo.Commit("Merge commit", merger, merger);
-                        }
-
-                        if (mergeResult.Status != MergeStatus.UpToDate)
-                        {
-                            updateWindow.Close();
-                            updateWindow.Hide();
-                        }
-
-                        //Deal with mods
-                        string[] filePaths = Directory.GetFiles(modPath);
-
-                        List<string> fileNames = filePaths.Select(path => Path.GetFileName(path)).ToList();
-                        var downloads = new List<string>();
-                        var oldDownloads = new List<string>();
-                        var finalDownloads = new List<string>();
-
-                        //Get a list of mods in the list
-                        foreach (string line in System.IO.File.ReadAllLines(modPath + "\\ModList.txt"))
-                        {
-                            if (Uri.IsWellFormedUriString(line, UriKind.Absolute))
-                            {
-                                downloads.Add(line);
-                            }
-                        }
-
-                        //Get a list of the old mods
-                        foreach (string line in System.IO.File.ReadAllLines(modPath + "\\OldModList.txt"))
-                        {
-                            if (Uri.IsWellFormedUriString(line, UriKind.Absolute))
-                            {
-                                oldDownloads.Add(line);
-                            }
-                        }
-
-                        //Get a list of all the new mods to download
-                        foreach (string download in downloads)
-                        {
-                            Uri mod = new Uri(download);
-                            if (!fileNames.Contains(System.IO.Path.GetFileName(mod.LocalPath)))
-                            {
-                                finalDownloads.Add(download);
-                            }
-                        }
-
-                        //Get a list of all the old mods to delete
-                        foreach (string olddownload in oldDownloads)
-                        {
-
-                            if (!downloads.Contains(olddownload))
-                            {
-                                Uri mod = new Uri(olddownload);
-                                if (fileNames.Contains(System.IO.Path.GetFileName(mod.LocalPath)))
+                                // Post UI updates back to the UI thread
+                                updateWindow.BeginInvoke((Action)(() =>
                                 {
-                                    System.IO.File.Delete(modPath + "\\" + System.IO.Path.GetFileName(mod.LocalPath));
-                                }
+                                    if (mergeResult.Status != MergeStatus.UpToDate)
+                                    {
+                                        updateWindow.Close();
+                                        updateWindow.Hide();
+                                    }
+                                }));
                             }
-                        }
+                            catch (CheckoutConflictException)
+                            {
+                                repo.Reset(ResetMode.Hard);
+                                mergeResult = repo.Merge(repo.Branches[repo.Head.FriendlyName].TrackedBranch, repo.Config.BuildSignature(DateTimeOffset.Now));
 
-                        if (finalDownloads.Count > 0)
-                        {
-                            downloadWindow = new Downloading();
-                            downloadWindow.Activate();
-                            downloadWindow.Show();
-                            downloadWindow.Update();
-                            await Task.Run(async () => await DownloadMods(finalDownloads));
-                        }
+                                // Post UI updates back to the UI thread
+                                updateWindow.BeginInvoke((Action)(() =>
+                                {
+                                    if (mergeResult.Status != MergeStatus.UpToDate)
+                                    {
+                                        updateWindow.Close();
+                                        updateWindow.Hide();
+                                    }
+                                }));
+                            }
 
-                        updating = false;
+                            if (mergeResult.Status == MergeStatus.Conflicts)
+                            {
+                                foreach (var conflict in repo.Index.Conflicts)
+                                {
+                                    Commands.Checkout(repo, conflict.Theirs.Path, new CheckoutOptions { CheckoutModifiers = CheckoutModifiers.Force });
+                                }
 
+                                Signature merger = repo.Config.BuildSignature(DateTimeOffset.Now);
+                                Commit mergeCommit = repo.Commit("Merge commit", merger, merger);
+                            }
+
+                            updating = false;
+                            updateWindow.BeginInvoke((Action)(() =>
+                            {
+                                PlayActive();
+                            }));
+                            
+                        });
                     }
-                    else
-                    {
-                        Console.WriteLine("No updates");
-                    }
 
-                    foreach (TreeEntryChanges c in updates)
-                    {
-                        Console.WriteLine(c);
-                    }
                 }
                 Console.WriteLine(logMessage);
-                OffPlayButtonActive();
+
             }
             else
             {
@@ -221,24 +167,10 @@ namespace ElixaA2
                 await InitialClone();
                 downloadWindow.Close();
                 updating = false;
+                PlayActive();
 
-                var downloads = new List<string>();
-
-                foreach (string line in System.IO.File.ReadAllLines(modPath + "\\ModList.txt"))
-                {
-                    if (Uri.IsWellFormedUriString(line, UriKind.Absolute))
-                    {
-                        downloads.Add(line);
-                    }
-                }
-
-                await Task.Run(async () => await DownloadMods(downloads));
-
-                OffPlayButtonActive();
             }
-            return false;
         }
-
 
         //Clones everything
         async Task InitialClone()
@@ -273,116 +205,12 @@ namespace ElixaA2
             await Task.Run(() => Repository.Clone(sRepo, verPath, cOptions));
         }
 
-
-        async Task DownloadMods(List<string> downloads)
+        public void PlayActive()
         {
-            Console.WriteLine(downloads.Count);
 
-            if (downloads.Count == 1)
-            {
-                Console.WriteLine(downloads[0]);
-                Uri mod = new Uri(downloads[0]);
-                string modName = System.IO.Path.GetFileName(mod.LocalPath); //get file name
-                Console.WriteLine(downloads[0]);
-                using (var client = new WebClient())
-                {
-                    int index = downloads.FindIndex(a => a.Contains(downloads[0]));
-
-                    client.DownloadFileCompleted += (s, e) => Console.WriteLine("Download file completed.");
-
-                    client.DownloadProgressChanged += (s, e) => downloadWindow.Invoke((MethodInvoker)delegate {
-                        downloadWindow.DownloadBigLabel.Text = modName;
-                        downloadWindow.progressBar1.Value = (int)e.ProgressPercentage;
-
-                        downloadWindow.Update();
-                        Application.DoEvents();
-
-                        if (e.ProgressPercentage >= 100)
-                        {
-                            try
-                            {
-                                if (downloads[index + 1] == null) ;
-
-                            }
-                            catch (ArgumentOutOfRangeException ex)
-                            {
-                                downloadWindow.Hide();
-                                downloadWindow.Close();
-                            }
-                        }
-
-                    });
-                    await client.DownloadFileTaskAsync(mod, modPath + "\\" + modName);
-
-                    if (downloads[index + 1] != null)
-                    {
-                        client.DownloadFileCompleted += (s, e) => Console.WriteLine("Download file completed.");
-                    }
-
-
-                }
-            }
-
-            if (downloads.Count > 1)
-            {
-                foreach (string download in downloads)
-                {
-                    Console.WriteLine(download);
-                    Uri mod = new Uri(download);
-                    string modName = System.IO.Path.GetFileName(mod.LocalPath); //get file name
-                    Console.WriteLine(download);
-                    using (var client = new WebClient())
-                    {
-                        int index = downloads.FindIndex(a => a.Contains(download));
-
-                        client.DownloadFileCompleted += (s, e) => Console.WriteLine("Download file completed.");
-
-                        client.DownloadProgressChanged += (s, e) => downloadWindow.Invoke((MethodInvoker)delegate {
-                            downloadWindow.DownloadBigLabel.Text = modName;
-                            downloadWindow.progressBar1.Value = (int)e.ProgressPercentage;
-
-                            downloadWindow.Update();
-                            Application.DoEvents();
-
-                            if (e.ProgressPercentage >= 100)
-                            {
-                                try
-                                {
-                                    if (downloads[index + 1] == null) ;
-
-                                }
-                                catch (ArgumentOutOfRangeException ex)
-                                {
-                                    downloadWindow.Hide();
-                                    downloadWindow.Close();
-                                }
-                            }
-
-                        });
-                        await client.DownloadFileTaskAsync(mod, modPath + "\\" + modName);
-
-                        if (downloads[index + 1] != null)
-                        {
-                            client.DownloadFileCompleted += (s, e) => Console.WriteLine("Download file completed.");
-                        }
-
-
-                    }
-
-                }
-            }
-            
-
-
-
-
-        }
-
-
-        //Checks offline username
-        void OffPlayButtonActive()
-        {
+            //Is Username Valid
             bool usernameValid = false;
+            offlineUsername = (string)Properties.Settings.Default["Username"];
 
 
             if (offlineUsername.Length >= 4 && offlineUsername.Contains(" ") == false && offlineUsername != "")
@@ -394,74 +222,42 @@ namespace ElixaA2
                 usernameValid = false;
             }
 
-            if (updating == true)
+
+            if (usernameValid && updating == false)
             {
-                usernameValid = false;
+                pictureBox1.Enabled = true;
             }
             else
             {
-                usernameValid = true;
-            }
-
-            OfflinePlay.Enabled = usernameValid;
-        }
-
-
-        //Saves offline username
-        void CheckOffUsername()
-        {
-            offlineUsername = (string)Properties.Settings.Default["OfflineUsername"];
-            OfflineUsernameBox.Text = offlineUsername;
-
-
-        }
-
-
-        //Resets the ram per play
-        void resetRam()
-        {
-            ram = (int)Properties.Settings.Default["Ram"];
-
-            if (ram <= 0)
-            {
-                OfflinePlay.Enabled = false;
-            }
-            else
-            {
-                OfflinePlay.Enabled = true;
-                OffPlayButtonActive();
+                pictureBox1.Enabled = false;
             }
 
         }
+
+
+
+
+
+
 
         //Initialises everything
         public Form1()
         {
+
             CheckUpdates();
             InitializeComponent();
-
-            CheckOffUsername();
-            OffPlayButtonActive();
-            resetRam();
-        }
-
-
-
-
-        private void OfflineUsernameBox_TextChanged(object sender, EventArgs e)
-        {
-            offlineUsername = OfflineUsernameBox.Text;
-            Properties.Settings.Default["OfflineUsername"] = offlineUsername;
-            Properties.Settings.Default.Save();
-            OffPlayButtonActive();
+            pictureBox1_EnabledChanged();
+            PlayActive();
         }
 
 
 
         //Pressing play in offline mode
-        private async void OfflinePlay_Click(object sender, EventArgs a)
+
+        private async void pictureBox1_Click(object sender, EventArgs e)
         {
-            OfflinePlay.Enabled = false;
+            pictureBox1.Enabled = false;
+            Cursor.Current = Cursors.WaitCursor;
 
             System.Net.ServicePointManager.DefaultConnectionLimit = 256;
 
@@ -477,22 +273,12 @@ namespace ElixaA2
 
             process.Start();
             this.WindowState = FormWindowState.Minimized;
-
+            Cursor.Current = Cursors.Arrow;
             process.WaitForExit();
-            OfflinePlay.Enabled = true;
+            pictureBox1.Enabled = true;
             this.WindowState = FormWindowState.Normal;
         }
 
-
-
-        //Save offline username checkbox
-        private void checkBox1_CheckedChanged(object sender, EventArgs e)
-        {
-
-            Properties.Settings.Default["OfflineUsername"] = offlineUsername;
-
-            Properties.Settings.Default.Save();
-        }
 
         //Replaces relativePath thing that .net framwork doesnt have
         private static string GetRelativePath(string rootPath, string fullPath)
@@ -533,12 +319,106 @@ namespace ElixaA2
             }
         }
 
-        private async void settingsButton_Click(object sender, EventArgs e)
+
+
+        private void pictureBox1_MouseEnter(object sender, EventArgs e)
         {
+            pictureBox1.Image = Properties.Resources.jugar2;
+            PlayActive();
+        }
+
+        private void pictureBox1_MouseLeave(object sender, EventArgs e)
+        {
+            pictureBox1.Image = Properties.Resources.jugar1;
+        }
+
+        private void pictureBox1_MouseDown(object sender, MouseEventArgs e)
+        {
+            pictureBox1.Image = Properties.Resources.jugar3;
+        }
+
+        private void pictureBox1_MouseUp(object sender, MouseEventArgs e)
+        {
+            pictureBox1.Image = Properties.Resources.jugar2;
+        }
+
+        private void pictureBox1_EnabledChanged(object sender = null, EventArgs e = null)
+        {
+            if (pictureBox1.Enabled == true)
+            {
+                pictureBox1.Image = Properties.Resources.jugar1;
+            }
+            else
+            {
+                pictureBox1.Image = Properties.Resources.jugar_disabled;
+            }
+        }
+
+
+        //Close button
+        private void pictureBox2_Click(object sender, EventArgs e)
+        {
+            Application.Exit();
+        }
+
+
+        //Minimize button
+        private void pictureBox3_Click(object sender, EventArgs e)
+        {
+            this.WindowState = FormWindowState.Minimized;
+        }
+
+
+        //Move window
+        public const int WM_NCLBUTTONDOWN = 0xA1;
+        public const int HT_CAPTION = 0x2;
+
+        [System.Runtime.InteropServices.DllImportAttribute("user32.dll")]
+        public static extern int SendMessage(IntPtr hWnd, int Msg, int wParam, int lParam);
+        [System.Runtime.InteropServices.DllImportAttribute("user32.dll")]
+        public static extern bool ReleaseCapture();
+
+        private void Form1_MouseDown(object sender, System.Windows.Forms.MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                ReleaseCapture();
+                SendMessage(Handle, WM_NCLBUTTONDOWN, HT_CAPTION, 0);
+            }
+        }
+
+        private void pictureBox4_MouseEnter(object sender, EventArgs e)
+        {
+            pictureBox4.Image = Properties.Resources.menu2;
+        }
+
+        private void pictureBox4_MouseLeave(object sender, EventArgs e)
+        {
+            pictureBox4.Image = Properties.Resources.menu1;
+        }
+
+        private void pictureBox4_MouseDown(object sender, MouseEventArgs e)
+        {
+            pictureBox4.Image = Properties.Resources.menu3;
+
             Settings settings = new Settings();
             settings.Activate();
             settings.Show();
+            this.Hide();
             settings.Update();
+
+
+
+        }
+
+        private void pictureBox4_MouseUp(object sender, MouseEventArgs e)
+        {
+            pictureBox4.Image = Properties.Resources.menu2;
+        }
+
+        private void pictureBox5_Click(object sender, EventArgs e)
+        {
+            System.Diagnostics.Process.Start("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
         }
     }
 }
