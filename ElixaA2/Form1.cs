@@ -102,6 +102,19 @@ namespace ElixaA2
                             updateWindow.Update();
                             updateWindow.TopMost = true;
 
+                            foreach(var update in updates)
+                            {
+                                if (update.Status == ChangeKind.Added)
+                                {
+                                    if (System.IO.File.Exists(verPath + "\\" + update.Path))
+                                    {
+                                        System.IO.File.Delete(verPath + "\\" + update.Path);
+                                    }
+                                    
+                                }
+                            }
+
+
                             MergeResult mergeResult;
                             Signature merger = new Signature("Algun Player", "you@example.com", DateTimeOffset.Now);
                             try
