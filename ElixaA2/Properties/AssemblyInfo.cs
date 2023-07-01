@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("ElixaA2")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("Elixa Launcher")]
+[assembly: AssemblyDescription("Launcher for Elixa's Minecraft Modpack")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("ElixaA2")]
-[assembly: AssemblyCopyright("Copyright ©  2023")]
+[assembly: AssemblyCompany("Elixa")]
+[assembly: AssemblyProduct("Elixa Launcher")]
+[assembly: AssemblyCopyright("Elixa© 2023")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
